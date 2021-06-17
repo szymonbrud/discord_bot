@@ -1,8 +1,7 @@
 const Discord = require('discord.js');
 const { indexOf } = require('ffmpeg-static');
 const ytdl = require('ytdl-core');
-const dotenv = require('dotenv').config()
-
+const dotenv = require('dotenv').config();
 
 // Create an instance of a Discord client
 
@@ -375,8 +374,6 @@ const axios = require('axios');
 //   bot.user.setAvatar(e.data);
 // });
 
-
-
 let listOfAllMembers = [];
 let chanelToDelete = null;
 let botMata = null;
@@ -407,7 +404,7 @@ function play2(guild, song) {
       play2(guild, serverQueue.songs[0]);
     })
     .on('error', (error) => console.error(error));
-  dispatcher.setVolumeLogarithmic(serverQueue.volume /   5);
+  dispatcher.setVolumeLogarithmic(serverQueue.volume / 5);
 }
 
 client.on('message', async (message) => {
@@ -416,15 +413,15 @@ client.on('message', async (message) => {
     listOfAllMembers = [];
     const bot = message.guild.members.cache.find(
       (e) => e.id === '831127979878121482'
-      );
-      
-      lastNickNameBot = bot.nickname;
-      
-      bot.setNickname('Barka');
-      
-      botMata = bot;
-      
-      // bot.user.setAvatar('https://i.ibb.co/Hp3dDLL/images.jpg');
+    );
+
+    lastNickNameBot = bot.nickname;
+
+    bot.setNickname('Barka');
+
+    botMata = bot;
+
+    // bot.user.setAvatar('https://i.ibb.co/Hp3dDLL/images.jpg');
     const barkaChanel = await message.guild.channels.create(
       'Czas na barke!!!',
       {
@@ -478,40 +475,39 @@ client.on('message', async (message) => {
 let usersKickedFromServer = [];
 
 client.on('message', (message) => {
-  const [command, userId] = message.content.split(" ");
+  const [command, userId] = message.content.split(' ');
 
-  if(command === "-nie_wbija"){
+  if (command === '-nie_wbija') {
     message.delete();
-    
-    if(!userId) {
-      message.channel.send('Podaj ID użytkownika po spacji')
+
+    if (!userId) {
+      message.channel.send('Podaj ID użytkownika po spacji');
       return;
     }
 
-    if(message.member.id === "318266342224560139"){
+    if (message.member.id === '318266342224560139') {
       usersKickedFromServer.push(userId);
     }
-
-  } else if(command === "-wbija"){
-    if(!userId) {
-      message.channel.send('Podaj ID użytkownika po spacji')
+  } else if (command === '-wbija') {
+    if (!userId) {
+      message.channel.send('Podaj ID użytkownika po spacji');
       return;
     }
 
-    if(message.member.id === "318266342224560139"){
+    if (message.member.id === '318266342224560139') {
       const findById = usersKickedFromServer.indexOf(userId);
-      if(findById){
+      if (findById) {
         usersKickedFromServer.splice(findById, 1);
-      } 
+      }
     }
   }
-})
+});
 
 client.on('voiceStateUpdate', (event) => {
-  if(usersKickedFromServer.includes(event.member.id)){
+  if (usersKickedFromServer.includes(event.member.id)) {
     event.kick();
   }
-})
+});
 
 // Create an event listener for messages
 // client.on("message", (message) => {
@@ -525,3 +521,71 @@ client.on('voiceStateUpdate', (event) => {
 // client.on('')
 
 // Log our bot in using the token from https://discord.com/developers/applications
+
+const queuePrivate = new Map();
+
+function play3(guild, song) {
+  const serverQueue = queuePrivate.get(guild.id);
+
+  if (!song) {
+    serverQueue.voiceChannel.leave();
+    queuePrivate.delete(guild.id);
+    console.log('skończyło się');
+    listOfAllMembers.forEach((listElement) => {
+      listElement.member.voice.setChannel(listElement.prevChannel);
+    });
+    setTimeout(() => {
+      chanelToDelete.delete();
+      botMata.setNickname(lastNickNameBot);
+    }, 3000);
+
+    // tutaj wykonać kod odnośnie usuwania barki
+    return;
+  }
+  const dispatcher = serverQueue.connection
+    .play(ytdl(song.url))
+    .on('finish', () => {
+      serverQueue.songs.shift();
+      play3(guild, serverQueue.songs[0]);
+    })
+    .on('error', (error) => console.error(error));
+  dispatcher.setVolumeLogarithmic(serverQueue.volume / 5);
+}
+
+client.on('message', async (message) => {
+  if (message.content === '/pmata') {
+    message.delete();
+
+    // ---------------------------------
+
+    const songInfo = await ytdl.getInfo(
+      'https://www.youtube.com/watch?v=8VMs4s1hgyA&ab_channel=QualityBass'
+    );
+    const song = {
+      title: songInfo.videoDetails.title,
+      url: songInfo.videoDetails.video_url,
+    };
+    const serverQueue = { songs: [] };
+    serverQueue.songs.push(song);
+    const voiceChannel = message.member.voice.channel;
+    const queueContruct = {
+      textChannel: message.channel,
+      voiceChannel: voiceChannel,
+      connection: null,
+      songs: [],
+      volume: 5,
+      playing: true,
+    };
+    queueContruct.songs.push(song);
+    queuePrivate.set(message.guild.id, queueContruct);
+    try {
+      console.log('want to start play');
+      var connection = await voiceChannel.join();
+      queueContruct.connection = connection;
+      play3(message.guild, queueContruct.songs[0]);
+    } catch (err) {
+      console.log(err);
+      return message.channel.send(err);
+    }
+  }
+});
